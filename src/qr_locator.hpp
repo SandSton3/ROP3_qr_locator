@@ -80,22 +80,6 @@ private:
         ROS_INFO_STREAM("Alive! @Time:" << e.current_real);
     }
 #endif
-public:
-#pragma region CONSTRUCTORS
-    Qr_locator(const std::string &lidar_topic_name, const std::string &qr_topic_name) : _nh(),                                        //create NodeHandle
-                                                                                        _sync(MySyncPolicy(10), _lidar_sub, _qr_sub), //construct snc
-                                                                                        _cam_params{}                                 /// init default camera parameter
-    {
-        _lidar_sub.subscribe(_nh, lidar_topic_name, 5);                          //Subcribe on lidar topic
-        _qr_sub.subscribe(_nh, qr_topic_name, 5);                                //subcribe on qr topic
-        _sync.registerCallback(boost::bind(&Qr_locator::sync_cb, this, _1, _2)); //synchronize messages
-        _res_pub = _nh.advertise<geometry_msgs::Point>(_pub_topic_name, 5);
-#ifdef DEBUG_ALIVE //Sebd Alive message
-        _debug_timer = _nh.createTimer(ros::Duration(1.0), boost::bind(&Qr_locator::debug_cb, this, _1));
-#endif
-    };
-    ~Qr_locator() = default;
-#pragma endregion
 #pragma region METHODS
     geometry_msgs::Point calc_point(const sensor_msgs::LaserScanConstPtr &lidar_msg, const dynamics_qr_msgs::QRCodeConstPtr &qr_msg) const
     {
@@ -181,4 +165,21 @@ public:
         }
     }
 #pragma endregion
+public:
+#pragma region CONSTRUCTORS
+    Qr_locator(const std::string &lidar_topic_name, const std::string &qr_topic_name) : _nh(),                                        //create NodeHandle
+                                                                                        _sync(MySyncPolicy(10), _lidar_sub, _qr_sub), //construct snc
+                                                                                        _cam_params{}                                 /// init default camera parameter
+    {
+        _lidar_sub.subscribe(_nh, lidar_topic_name, 5);                          //Subcribe on lidar topic
+        _qr_sub.subscribe(_nh, qr_topic_name, 5);                                //subcribe on qr topic
+        _sync.registerCallback(boost::bind(&Qr_locator::sync_cb, this, _1, _2)); //synchronize messages
+        _res_pub = _nh.advertise<geometry_msgs::Point>(_pub_topic_name, 5);
+#ifdef DEBUG_ALIVE //Sebd Alive message
+        _debug_timer = _nh.createTimer(ros::Duration(1.0), boost::bind(&Qr_locator::debug_cb, this, _1));
+#endif
+    };
+    ~Qr_locator() = default;
+#pragma endregion
+
 }; // class Qr_locator
