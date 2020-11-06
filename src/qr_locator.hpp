@@ -28,6 +28,7 @@
 // Debug Defines
 //#define DEBUG_ALIVE
 //#define DEBUG_CALC_DIST
+//#define DEBUG_CALC_LOCATION
 //#define DEBUG_PUBLISHER
 //#define DEBUG_CAM_PARAMS
 
@@ -86,10 +87,6 @@ private:
         else{
             ROS_INFO_STREAM("Distance from Lidar < 0.0 ");
         }
-
-       // double a2 = RAD_TO_DEG(atan2(_cam_params._cx-qr_msg->x,_cam_params._fx));
-       // ROS_INFO_STREAM("Test Angle: " << a2);
-
     }
 
 #ifdef DEBUG_ALIVE
@@ -121,7 +118,9 @@ private:
         double dist {calc_dist_from_range_vec(lidar_msg, angle_ls)};    // distance in reference of the lidar
         result.x = cos(angle_bl)*dist; //x-Value of the qr-position (-1.0 cause of the inverse angle)
         result.y = sin(angle_bl)*dist; //y-Value of the qr-position (-1.0 cause of the inverse angle)
+        #ifdef DEBUG_CALC_LOCATION
         ROS_INFO_STREAM("DEBUG: |abl:"<<RAD_TO_DEG(angle_bl)<<" |als: " << RAD_TO_DEG(angle_ls) << " |d: " << dist); 
+        #endif
         return result;
     }
     inline double const convert_angle_for_lidar(const double angle, const sensor_msgs::LaserScanConstPtr &lidar_msg) const
@@ -200,7 +199,6 @@ private:
         }
     }
 #pragma endregion
-
 public:
 #pragma region METHODS
     Qr_locator(const std::string &lidar_topic_name, const std::string &qr_topic_name) : _nh(),                                        //create NodeHandle
@@ -222,8 +220,5 @@ public:
         _caminfo_sub = _nh.subscribe<sensor_msgs::CameraInfo>(cam_info_topic,1,&Qr_locator::cb_cam_info,this);
         }
     }
-
 #pragma endregion
-
-
 }; // class Qr_locator
