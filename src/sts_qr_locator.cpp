@@ -6,9 +6,10 @@
 
 int main(int argc, char  *argv[])
 {
-    ros::init(argc,argv,"locator_node");
-    Qr_locator my_loc("scan","qr_codes/detected");
+    ros::init(argc,argv,"locator_node"); //init ros
+    Qr_locator my_loc("scan","qr_codes/detected"); //create Qr-locator-objekt
+    my_loc.set_cam_params_from_cam_info("/camera/camera_info");
+    ros::spin(); //Run till ros stops
 
-    ros::spin();
-    return 0;
+    return 0; // No Runtime error
 }

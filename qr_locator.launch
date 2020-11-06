@@ -1,5 +1,7 @@
 <launch>
     <node name="sts_qr_locator" pkg="sts_qr_locator" type="locator_node" output="screen" />
-    <node name="qr_detector" pkg="dynamics_qr_detector" type="qr_detector_node" output="screen" />
+    <node name="qr_detector" pkg="dynamics_qr_detector" type="qr_detector" output="screen" />
+    <node name="qr_marker" pkg="dynamics_qr_marker" type="marker" output="screen" />
     <include file="$(find turtlebot3_gazebo)/launch/tgw_arena.launch"></include>
+    <include file="$(find turtlebot3_slam)/launch/turtlebot3.launch"></include>
   </launch>
