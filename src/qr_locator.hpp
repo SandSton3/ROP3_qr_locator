@@ -161,8 +161,7 @@ private:
 
             for (int shift{range * -1}; shift <= range; ++shift)
             {
-                if (dist_cnt != 0)
-                    check_dist_and_add(dist_sum, lidar_msg->ranges[check_pos(angle_pos, shift, lidar_msg->ranges.size())], dist_cnt);
+                if (dist_cnt != 0) check_dist_and_add(dist_sum, lidar_msg->ranges[check_pos(angle_pos, shift, lidar_msg->ranges.size())], dist_cnt);
             }
 #ifdef DEBUG_CALC_DIST
             ROS_INFO_STREAM("pos: " << angle_pos << "first Value: " << lidar_msg->ranges[angle_pos] << "d_sum: " << dist_sum << "d_cnt: " << dist_cnt);
@@ -205,19 +204,19 @@ private:
 #pragma endregion
 public:
 #pragma region METHODS
-    Qr_locator(const std::string &lidar_topic_name, const std::string &qr_topic_name) : _nh(),                                        //create NodeHandle
-                                                                                        _sync(MySyncPolicy(10), _lidar_sub, _qr_sub), //construct snc
-                                                                                        _cam_params{}                                 /// init default camera parameter
+    Qr_locator(const std::string &lidar_topic_name, const std::string &qr_topic_name) : _nh(),                                        // create NodeHandle
+                                                                                        _sync(MySyncPolicy(10), _lidar_sub, _qr_sub), // construct sync
+                                                                                        _cam_params{}                                 // init default camera parameter
     {
-        _lidar_sub.subscribe(_nh, lidar_topic_name, 5);                          // Subcribe on lidar topic
-        _qr_sub.subscribe(_nh, qr_topic_name, 5);                                // Subcribe on qr topic
-        _sync.registerCallback(boost::bind(&Qr_locator::sync_cb, this, _1, _2)); // Synchronize messages
-        _res_pub = _nh.advertise<dynamics_qr_msgs::QRCode>(_pub_topic_name, 5);  // Publisher  
+        _lidar_sub.subscribe(_nh, lidar_topic_name, 5);                          // subcribe on lidar topic
+        _qr_sub.subscribe(_nh, qr_topic_name, 5);                                // subcribe on qr topic
+        _sync.registerCallback(boost::bind(&Qr_locator::sync_cb, this, _1, _2)); // synchronize messages
+        _res_pub = _nh.advertise<dynamics_qr_msgs::QRCode>(_pub_topic_name, 5);  // publisher for result  
 #ifdef DEBUG_ALIVE //Send alive message
         _debug_timer = _nh.createTimer(ros::Duration(1.0), boost::bind(&Qr_locator::debug_cb, this, _1));
 #endif
     };
-    ~Qr_locator() = default;
+    ~Qr_locator() = default; // nothing extraordinary to do
 
     void set_cam_params_from_cam_info(const std::string& cam_info_topic){
         if (_cam_params._cam_params_set == false){
