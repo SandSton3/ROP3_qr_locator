@@ -13,11 +13,11 @@
 #include <message_filters/time_synchronizer.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/sync_policies/approximate_time.h>
-// Message includes
+// ROS-Message includes
 #include <sensor_msgs/LaserScan.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <dynamics_qr_msgs/QRCode.h>
-// C++ Standard includes
+// C++-Standard includes
 #include <string>
 #include <math.h>
 #include <numeric>
@@ -33,13 +33,14 @@
 //#define DEBUG_CAM_PARAMS
 
 
-struct Cam_params
+struct Cam_params final
 {
-    double _fx{265};                 //focal lenght in x [px]
-    size_t _width{320};             //width in pixel
-    double _fov_h{DEG_TO_RAD(60)}; //field of view horizontal in rad
-    double _cx{165.0};
-    bool _cam_params_set{false};
+    double _fx{265};                 // focal lenght in x [px]
+    size_t _width{320};              // width in pixel
+    double _fov_h{DEG_TO_RAD(60)};   // field of view horizontal in rad
+    double _cx{165.0};               // baseline intersection x-axis
+    bool _cam_params_set{false};     // set parameter: true-> is se / false-> is not set
+    //Constructor
     Cam_params() = default;
     ~Cam_params() = default;
 
@@ -51,7 +52,7 @@ struct Cam_params
         _fx = cam_inf->K[0];
         _cx = cam_inf->K[2];
         _width = cam_inf->width > 0 ? cam_inf->width : _width;
-        _fov_h = atan(_width / (_fx*2.0))*2.0; //calculate FOV from Pinhole-Modell
+        _fov_h = atan(_width / (_fx*2.0))*2.0; //calculate FOV from Pinhole-Model
         _cam_params_set = true;
         }
     }
@@ -67,16 +68,17 @@ private:
     message_filters::Synchronizer<MySyncPolicy> _sync; //synchtonizer
     /* ROS-Specific */
     ros::NodeHandle _nh;          // handle to roscore
-    ros::Subscriber _caminfo_sub; //subcribe to camer-info-info topic
+    ros::Subscriber _caminfo_sub; // subcribe to camera-info-info topic
     ros::Publisher _res_pub;      // result publisher
     ros::Timer _debug_timer;      // timer for debug messages
     /* Rest */
-    std::string _pub_topic_name{"/qr_codes/located"}; //topic name, default: /qr_codes/located
+    std::string _pub_topic_name{"/qr_codes/located"}; // topic name, default: /qr_codes/located
     Cam_params _cam_params;                     // useful camera parameters
 
 #pragma region METHODS
     void sync_cb(const sensor_msgs::LaserScanConstPtr &lidar_msg, const dynamics_qr_msgs::QRCodeConstPtr &qr_msg)
-    {
+    { /* Callback Function for synchronization
+    */
         dynamics_qr_msgs::QRCode result = calc_location(lidar_msg, qr_msg);
 #ifdef DEBUG_PUBLISHER
         ROS_INFO_STREAM("x: " << result.x << "| y:" << result.y << "| cd"<< (result.x + result.y));
@@ -99,9 +101,11 @@ private:
     }
 #endif
     void cb_cam_info(const sensor_msgs::CameraInfoConstPtr& cam_msg){
-        _cam_params.set_params(cam_msg);
+        /* Callback function to set camera-parameter
+        */
+        _cam_params.set_params(cam_msg); // set camera parameter
         ROS_INFO_STREAM("Cam parameter set: |fx:" << _cam_params._fx << "| cx:"<<_cam_params._cx<< "| FOV:" <<_cam_params._fov_h);
-        _caminfo_sub.shutdown();
+        _caminfo_sub.shutdown(); // unsubcribe callback
     }
 
     dynamics_qr_msgs::QRCode calc_location(const sensor_msgs::LaserScanConstPtr &lidar_msg, const dynamics_qr_msgs::QRCodeConstPtr &qr_msg) const
@@ -129,7 +133,7 @@ private:
         *  Maximum value = maximum of the lidar-angle, minimum value = minimum of the lidar-angle
         *  Return angle for Lidar in radians
         */
-        return  ((angle < 0.0 ? lidar_msg->angle_max+angle : lidar_msg->angle_min)+angle); // check if angle is negativ an translate to lidar-angel
+        return  ((angle < 0.0 ? lidar_msg->angle_max : lidar_msg->angle_min)+angle); // check if angle is negativ and translate to lidar-angel
     }
     inline double const calc_angle_from_image(const dynamics_qr_msgs::QRCodeConstPtr &qr_msg) const
     { /* Function to calculate the angel from the position of the QR-Code  in reference to the baseline of the camera 
