@@ -1,5 +1,7 @@
-#pragma onceS
+#pragma once
 #include "qr_locator_camparam.hpp"
+
+//Parameter defines
 #define RANGE 2 //range within the median of ranges is built (=2 means 2 left and 2 right from position)
 #define DEVIATION 0.01 //allowed deviation so that a range is used to build mean range
 

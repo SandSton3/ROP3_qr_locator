@@ -1,5 +1,7 @@
 #pragma once
+// Message includes
 #include <sensor_msgs/CameraInfo.h>
+// c++-standart includes
 #include <numeric>
 
 #define DEG_TO_RAD(X) ((X)*M_PI / 180.0) // Translate Degree to Radians

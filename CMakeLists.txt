@@ -106,7 +106,7 @@ find_package(Boost REQUIRED COMPONENTS system)
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES sts_qr_locator
+ // LIBRARIES sts_qr_locator
   CATKIN_DEPENDS dynamics_qr_msgs message_filters roscpp sensor_msgs std_msgs
   DEPENDS system_lib
 )

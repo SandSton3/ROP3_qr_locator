@@ -23,15 +23,13 @@
 // Package internal includes
 #include "qr_locator_algorithm.hpp"
 #include "qr_locator_camparam.hpp"
-// Functional Defines
-
 // Debug Defines
 //#define DEBUG_ALIVE
 //#define DEBUG_CALC_DIST
 //#define DEBUG_CALC_LOCATION
-//#define DEBUG_PUBLISHER
+#define DEBUG_PUBLISHER
 //#define DEBUG_CAM_PARAMS
-#define DEBUG_PARAMS
+//#define DEBUG_PARAMS
 
 namespace qr_locator{
 
@@ -61,7 +59,10 @@ private:
     */
         dynamics_qr_msgs::QRCode result = calc_location(lidar_msg, qr_msg);
 #ifdef DEBUG_PUBLISHER
-        ROS_INFO_STREAM("x: " << result.x << "| y:" << result.y << "| cd"<< (result.x + result.y));
+        ROS_INFO_STREAM("Results:" <<std::right<< std::fixed<<std::showpos<<
+        "| x: "   << result.x << 
+        "| y:"  << result.y <<
+        "| cd: " << (result.x + result.y));
 #endif
         if (abs(result.x +result.y) > 0.0){ //chessboard distance has to be valid
             _res_pub.publish(result);
@@ -84,7 +85,7 @@ private:
         /* Callback function to set camera-parameter
         */
         _cam_params.set_params(cam_msg); // set camera parameter
-        ROS_INFO_STREAM("Cam parameter set: |fx:" << _cam_params._fx << "| cx:"<<_cam_params._cx<< "| FOV:" <<_cam_params._fov_h);
+        ROS_INFO_STREAM("Cam parameter set: |fx:" <<std::left<<_cam_params._fx << "| cx:"<<_cam_params._cx<< "| FOV:" <<_cam_params._fov_h);
         _caminfo_sub.shutdown(); // unsubcribe callback
     }
 
@@ -128,7 +129,7 @@ public:
 #pragma region METHODS
 
     Qr_locator():_nh(),
-                _sync(MySyncPolicy(10)),
+                _sync(MySyncPolicy(10),_lidar_sub,_qr_sub),
                 _cam_params{}
     {
         init_params();
@@ -139,7 +140,6 @@ public:
 #ifdef DEBUG_ALIVE //Send alive message
         _debug_timer = _nh.createTimer(ros::Duration(1.0), boost::bind(&Qr_locator::debug_cb, this, _1));
 #endif
-
     };
     ~Qr_locator() = default; // nothing extraordinary to do
 

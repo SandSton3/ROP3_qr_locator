@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
     <!-- Arguments to be passed in-->
-    <arg name ="cam_info_topic"     default="/camera/camera_info"/>  <!--Topicname of the camera info topic /camera/camera_info-->
-    <arg name ="qr_detector_topic"  default="/qr_codes/detected"/>   <!--Topicname of the qr_detected topic-->
-    <arg name ="scan_topic"         default="/scan"/>                <!--Topicname of the scanner result topic-->
-    <arg name ="result_topic"       default="/qr_codes/located"/>    <!--Topicname of the result topic-->
+    <arg name ="cam_info_topic"     default="camera/camera_info"/>  <!--Topicname of the camera info topic /camera/camera_info-->
+    <arg name ="qr_detector_topic"  default="qr_codes/detected"/>   <!--Topicname of the qr_detected topic-->
+    <arg name ="scan_topic"         default="scan"/>                <!--Topicname of the scanner result topic-->
+    <arg name ="result_topic"       default="qr_codes/located"/>    <!--Topicname of the result topic-->
     <!-- Paramaters -->
     <param name ="qr_locator/p_cam_info_topic"     value="$(arg cam_info_topic)"   />   <!--Parametername for Topicname of the camera info topic-->
     <param name ="qr_locator/p_qr_detector_topic"  value="$(arg qr_detector_topic)"/>   <!--Parametername for Topicname of the qr_detected topic-->

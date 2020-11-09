@@ -1,4 +1,3 @@
-#pragma once
 #include <ros/ros.h>
 #include "qr_locator.hpp"
 
