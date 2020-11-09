@@ -20,43 +20,20 @@
 // C++-Standard includes
 #include <string>
 #include <math.h>
-#include <numeric>
-#include <boost/range/numeric.hpp>
+// Package internal includes
+#include "qr_locator_algorithm.hpp"
+#include "qr_locator_camparam.hpp"
 // Functional Defines
-#define DEG_TO_RAD(X) ((X)*M_PI / 180.0) // Translate Degree to Radians
-#define RAD_TO_DEG(X) ((X)*180.0 / M_PI) // Translate Radians to degrees
+
 // Debug Defines
 //#define DEBUG_ALIVE
 //#define DEBUG_CALC_DIST
 //#define DEBUG_CALC_LOCATION
 //#define DEBUG_PUBLISHER
 //#define DEBUG_CAM_PARAMS
+#define DEBUG_PARAMS
 
-
-struct Cam_params final
-{
-    double _fx{265};                 // focal lenght in x [px]
-    size_t _width{320};              // width in pixel
-    double _fov_h{DEG_TO_RAD(60)};   // field of view horizontal in rad
-    double _cx{165.0};               // baseline intersection x-axis
-    bool _cam_params_set{false};     // set parameter: true-> is se / false-> is not set
-    //Constructor
-    Cam_params() = default;
-    ~Cam_params() = default;
-
-    void set_params(const sensor_msgs::CameraInfoConstPtr& cam_inf) 
-    {
-        /* Function to set camera-parameter
-        */
-        if (cam_inf->K.size() >=9 && std::accumulate(cam_inf->K.begin(),cam_inf->K.end(),0) > 0){ //check if sum of array > 0 so if there are vlauers
-        _fx = cam_inf->K[0];
-        _cx = cam_inf->K[2];
-        _width = cam_inf->width > 0 ? cam_inf->width : _width;
-        _fov_h = atan(_width / (_fx*2.0))*2.0; //calculate FOV from Pinhole-Model
-        _cam_params_set = true;
-        }
-    }
-};
+namespace qr_locator{
 
 class Qr_locator final
 {
@@ -71,11 +48,14 @@ private:
     ros::Subscriber _caminfo_sub; // subcribe to camera-info-info topic
     ros::Publisher _res_pub;      // result publisher
     ros::Timer _debug_timer;      // timer for debug messages
-    /* Rest */
-    std::string _pub_topic_name{"/qr_codes/located"}; // topic name, default: /qr_codes/located
-    Cam_params _cam_params;                     // useful camera parameters
-
-#pragma region METHODS
+    /* camera parameter */
+    qr_locator::Cam_params _cam_params;                     // useful camera parameters
+    /* Parmaters */
+    std::string _cam_info_topic;    // name of the camera-info topic
+    std::string _qr_detector_topic; // name of the qr-detector topic
+    std::string _scan_topic;        // name of the scan topic 
+    std::string _result_topic;      // name of the result topic
+#pragma region CALLBACKS
     void sync_cb(const sensor_msgs::LaserScanConstPtr &lidar_msg, const dynamics_qr_msgs::QRCodeConstPtr &qr_msg)
     { /* Callback Function for synchronization
     */
@@ -117,9 +97,9 @@ private:
         dynamics_qr_msgs::QRCode result;
         result.header.frame_id = "base_scan"; // coordinates in refernce to the lidar-frame
         result.data = qr_msg->data; // take data from the qr-message
-        double angle_bl {calc_angle_from_image(qr_msg)};                // angle in reference to the baseline
-        double angle_ls {convert_angle_for_lidar(angle_bl, lidar_msg)}; // angle in lidar-angles
-        double dist {calc_dist_from_range_vec(lidar_msg, angle_ls)};    // distance in reference of the lidar
+        const double angle_bl {algorithm::calc_angle_from_image(qr_msg,_cam_params)};     // angle in reference to the baseline
+        double angle_ls {algorithm::convert_angle_for_lidar(angle_bl, lidar_msg)}; // angle in lidar-angles
+        double dist {algorithm::calc_dist_from_range_vec(lidar_msg, angle_ls)};    // distance in reference of the lidar
         result.x = cos(angle_bl)*dist; //x-Value of the qr-position (-1.0 cause of the inverse angle)
         result.y = sin(angle_bl)*dist; //y-Value of the qr-position (-1.0 cause of the inverse angle)
         #ifdef DEBUG_CALC_LOCATION
@@ -127,101 +107,50 @@ private:
         #endif
         return result;
     }
-    inline double const convert_angle_for_lidar(const double angle, const sensor_msgs::LaserScanConstPtr &lidar_msg) const
-    {
-        /* Function to convert angle in reference to the baseline in an angle for the laserscaner
-        *  Maximum value = maximum of the lidar-angle, minimum value = minimum of the lidar-angle
-        *  Return angle for Lidar in radians
-        */
-        return  ((angle < 0.0 ? lidar_msg->angle_max : lidar_msg->angle_min)+angle); // check if angle is negativ and translate to lidar-angel
-    }
-    inline double const calc_angle_from_image(const dynamics_qr_msgs::QRCodeConstPtr &qr_msg) const
-    { /* Function to calculate the angel from the position of the QR-Code  in reference to the baseline of the camera 
-       * returns the angle in radians
-       * 
-       * Uses Pinhole-Camera-model to calculate angel, to get the right sign atan2-function is is used
-       */
-        return {atan2(_cam_params._cx-qr_msg->x,_cam_params._fx)};
-    }
-    inline double const calc_dist_from_range_vec(const sensor_msgs::LaserScanConstPtr &lidar_msg, const double angle_rad, const int range = 2) const
-    {
-        /* Function to calculates a mean value of the distance from the range vector at a defined vector position
-        * range is a parameter to define the range of positions to look for the meanvalue: range = 1 means that 1 postion left and 1 right
-        */
-        const size_t angle_pos = round(angle_rad / lidar_msg->angle_increment);           //cant get smaller then zero (size_t)
-        angle_pos >= lidar_msg->ranges.size() ? lidar_msg->ranges.size() - 1 : angle_pos; // if it hapens that pos is out of range
-        if (range < 1)
-        {
-            return lidar_msg->ranges[angle_pos];
-        }
-        else
-        {
-            double dist_sum{lidar_msg->ranges[angle_pos]}; //add first elemt to sum
-            size_t dist_cnt{1};                           //set element counter to 1
 
-            for (int shift{range * -1}; shift <= range; ++shift)
-            {
-                if (dist_cnt != 0) check_dist_and_add(dist_sum, lidar_msg->ranges[check_pos(angle_pos, shift, lidar_msg->ranges.size())], dist_cnt);
-            }
-#ifdef DEBUG_CALC_DIST
-            ROS_INFO_STREAM("pos: " << angle_pos << "first Value: " << lidar_msg->ranges[angle_pos] << "d_sum: " << dist_sum << "d_cnt: " << dist_cnt);
-#endif
-            return dist_sum / (double)dist_cnt;
-        }
-    }
-    inline size_t const check_pos(const size_t pos, const int shift, const size_t vec_length) const
-    {
-        /* Function to wrap the vector like a ringbuffer (also possible to use deque but not wort copy all entries)
-            retuns the position with shift 
-        */
-        size_t ret_pos{0};         //return position
-        if (pos == 0 && shift < 0) //Begin of the vector and negativ shift so pos is set to end minus shift
-        {
-            ret_pos = vec_length - shift;
-        }
-        else if (pos == (vec_length - 1) && shift > 0) // End of the vector and shift to positiv
-        {
-            ret_pos = (size_t)shift - 1;
-        }
-        else
-        {
-            ret_pos = pos + shift;
-        }
-
-        return ret_pos;
-    }
-    inline void check_dist_and_add(double &sum_dist, double cur_dist, size_t &count, const double max_variance = 0.01) const
-    {
-        /*Function to checks if a distance is plausible and add it to the sum if is
-    */
-        double diff{abs(cur_dist - (sum_dist / (double)count))}; //Differenc from current mean-value and new distance value
-        if (diff < max_variance && cur_dist > 0.0)             // Distancevariance is smaller as defined variance defaul = 0.001;
-        {
-            ++count;
-            sum_dist += cur_dist;
-        }
+    void init_params(){
+        _nh.getParam("qr_locator/p_cam_info_topic"   ,_cam_info_topic);   
+        _nh.getParam("qr_locator/p_qr_detector_topic",_qr_detector_topic);
+        _nh.getParam("qr_locator/p_scan_topic"       ,_scan_topic);       
+        _nh.getParam("qr_locator/p_result_topic"     ,_result_topic);
+        #ifdef DEBUG_PARAMS
+        ROS_INFO_STREAM(
+            ">>>  Parameter set  <<<" << std::endl <<
+            "Cam-Info-Topic: "      << _cam_info_topic    <<std::endl <<
+            "Qr-Detector-Topic: "   << _qr_detector_topic <<std::endl <<
+            "Scan-Topic: "          << _scan_topic        <<std::endl <<
+            "Result-Topic: "        << _result_topic;
+        );     
+        #endif
     }
 #pragma endregion
 public:
 #pragma region METHODS
-    Qr_locator(const std::string &lidar_topic_name, const std::string &qr_topic_name) : _nh(),                                        // create NodeHandle
-                                                                                        _sync(MySyncPolicy(10), _lidar_sub, _qr_sub), // construct sync
-                                                                                        _cam_params{}                                 // init default camera parameter
+
+    Qr_locator():_nh(),
+                _sync(MySyncPolicy(10)),
+                _cam_params{}
     {
-        _lidar_sub.subscribe(_nh, lidar_topic_name, 5);                          // subcribe on lidar topic
-        _qr_sub.subscribe(_nh, qr_topic_name, 5);                                // subcribe on qr topic
-        _sync.registerCallback(boost::bind(&Qr_locator::sync_cb, this, _1, _2)); // synchronize messages
-        _res_pub = _nh.advertise<dynamics_qr_msgs::QRCode>(_pub_topic_name, 5);  // publisher for result  
+        init_params();
+        _lidar_sub.subscribe(_nh,_scan_topic, 5);                                   // subcribe on lidar top
+        _qr_sub.subscribe(_nh,_qr_detector_topic, 5);                               // subcribe on qr topic
+        _sync.registerCallback(boost::bind(&Qr_locator::sync_cb, this, _1, _2));    // synchronize messages
+        _res_pub = _nh.advertise<dynamics_qr_msgs::QRCode>(_result_topic, 5);       // publisher for result
 #ifdef DEBUG_ALIVE //Send alive message
         _debug_timer = _nh.createTimer(ros::Duration(1.0), boost::bind(&Qr_locator::debug_cb, this, _1));
 #endif
+
     };
     ~Qr_locator() = default; // nothing extraordinary to do
 
-    void set_cam_params_from_cam_info(const std::string& cam_info_topic){
+    void set_cam_params_from_cam_info(){
+        /* Function to (try) to set internal camera-parameter from the  specified topic (see paramter camer_info_topic)
+        */
         if (_cam_params._cam_params_set == false){
-        _caminfo_sub = _nh.subscribe<sensor_msgs::CameraInfo>(cam_info_topic,1,&Qr_locator::cb_cam_info,this);
+        _caminfo_sub = _nh.subscribe<sensor_msgs::CameraInfo>(_cam_info_topic,1,&Qr_locator::cb_cam_info,this);
         }
     }
 #pragma endregion
 }; // class Qr_locator
+
+};// namespace qr:locator

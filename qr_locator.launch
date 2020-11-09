@@ -1,9 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <launch>
-    <node name="sts_qr_locator" pkg="sts_qr_locator" type="locator_node" output="screen" />
-    <node name="qr_detector" pkg="dynamics_qr_detector" type="qr_detector" output="screen" />
-    <!--  
-    <node name="dynamics_qr_marker" pkg="dynamics_qr_marker" type="dynamics_qr_marker" output="screen" />
-      <include file="$(find turtlebot3_gazebo)/launch/tgw_arena.launch"></include>
-      <include file="$(find turtlebot3_slam)/launch/turtlebot3_slam.launch"></include>
-    -->
-    </launch>
+    <!-- Arguments to be passed in-->
+    <arg name ="cam_info_topic"     default="/camera/camera_info"/>  <!--Topicname of the camera info topic /camera/camera_info-->
+    <arg name ="qr_detector_topic"  default="/qr_codes/detected"/>   <!--Topicname of the qr_detected topic-->
+    <arg name ="scan_topic"         default="/scan"/>                <!--Topicname of the scanner result topic-->
+    <arg name ="result_topic"       default="/qr_codes/located"/>    <!--Topicname of the result topic-->
+    <!-- Paramaters -->
+    <param name ="qr_locator/p_cam_info_topic"     value="$(arg cam_info_topic)"   />   <!--Parametername for Topicname of the camera info topic-->
+    <param name ="qr_locator/p_qr_detector_topic"  value="$(arg qr_detector_topic)"/>   <!--Parametername for Topicname of the qr_detected topic-->
+    <param name ="qr_locator/p_scan_topic"         value="$(arg scan_topic)"       />   <!--Parametername for Topicname of the scanner result topic-->
+    <param name ="qr_locator/p_result_topic"       value="$(arg result_topic)"     />   <!--Parametername for Topicname of the result topic-->
+    <!-- Nodes -->
+    <node name  ="sts_qr_locator"   pkg ="sts_qr_locator"       type="locator_node" output="screen" />
+    <node name  ="qr_detector"      pkg ="dynamics_qr_detector" type="qr_detector" output="screen" />
+    <node name  ="marker"           pkg ="dynamics_qr_marker"   type="show"/>
+</launch>
